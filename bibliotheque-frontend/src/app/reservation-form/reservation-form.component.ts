@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter } from '@angular/core';
 import { Books } from '../_model/books';
 import { Users } from '../_model/users';
 import { BooksService } from '../_service/books.service';
@@ -10,6 +10,8 @@ import { UsersService } from '../_service/users.service';
   styleUrls: ['./reservation-form.component.css']
 })
 export class ReservationFormComponent implements OnInit {
+
+  @Output() reservationCree = new EventEmitter<void>();
 
   books: Books[] = [];
   users: Users[] = [];
@@ -30,5 +32,9 @@ export class ReservationFormComponent implements OnInit {
 
   get formValid(): boolean {
     return this.selectedLivreId !== null && this.selectedAdherentId !== null;
+  }
+
+  onSubmit(): void {
+    this.reservationCree.emit();
   }
 }
