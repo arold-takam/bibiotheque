@@ -2,6 +2,7 @@ package com.ibizabroker.bibliotheque.service;
 
 import com.ibizabroker.bibliotheque.dao.BooksRepository;
 import com.ibizabroker.bibliotheque.entity.Books;
+import com.ibizabroker.bibliotheque.exceptions.InvalidRequestException;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,14 @@ public class BooksService {
 
     @Transactional
     public Books createBook(Books book) {
-        book.setDisponible(book.getNoOfCopies() != null && book.getNoOfCopies() > 0);
+        if (book.getBookName() == null || book.getBookName().isBlank()
+                || book.getBookAuthor() == null || book.getBookAuthor().isBlank()) {
+            throw new InvalidRequestException("bookName et bookAuthor sont obligatoires.");
+        }
+        if (book.getNoOfCopies() == null || book.getNoOfCopies() < 0) {
+            throw new InvalidRequestException("noOfCopies doit être un entier positif.");
+        }
+        book.setDisponible(book.getNoOfCopies() > 0);
         return booksRepository.save(book);
     }
 

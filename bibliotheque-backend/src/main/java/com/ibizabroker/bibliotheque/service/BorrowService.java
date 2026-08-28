@@ -71,6 +71,13 @@ public class BorrowService {
         Books book = booksRepository.findById(borrowBook.getBookId())
                 .orElseThrow(() -> new NotFoundException("Book with id " + borrowBook.getBookId() + " does not exist."));
 
+        // RG : un emprunt déjà rendu ne peut pas être rendu une seconde fois
+        // (sinon les exemplaires seraient ré-incrémentés à chaque appel).
+        if (borrowBook.getReturnDate() != null) {
+            throw new RuleViolationException("L'emprunt " + borrow.getBorrowId()
+                    + " a déjà été rendu le " + borrowBook.getReturnDate() + ".");
+        }
+
         book.returnBook();
         syncDisponibilite(book);
         booksRepository.save(book);
@@ -87,6 +94,8 @@ public class BorrowService {
 
     @Transactional(readOnly = true)
     public List<Borrow> booksBorrowedByUser(Integer userId) {
+        usersRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User with id " + userId + " does not exist."));
         return borrowRepository.findByUserId(userId);
     }
 
