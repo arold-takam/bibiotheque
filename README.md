@@ -68,7 +68,7 @@ c'est d'abord savoir diagnostiquer pourquoi il refuse de démarrer.
 
 * Un backend Spring Boot complet : entités, repositories, contrôleurs, sécurité JWT.
 * Un frontend Angular complet : 15 composants, routage, guard, intercepteur HTTP.
-* Un **seed idempotent** (`DataSeeder`) au premier démarrage : 5 comptes `A1..A5` (A1 = Admin+User, A2-A5 = User, mdp `a1..a5`), 6 livres `B1..B6` (2 exemplaires chacun), et un **emprunt préchargé : A1 a emprunté B1**.
+* Un **seed idempotent** (`DataSeeder`) au premier démarrage : 5 comptes `A1..A5` (A1 = Admin+User, A2-A5 = User, mdp `a1..a5`), 6 livres `B1..B6` (2 exemplaires chacun), et **emprunts préchargés : A3+A4 détient L2-L5** (0 copies restantes, indisponibles).
 
 ### Ce qui manque ou coince — c'est votre travail
 
@@ -249,7 +249,7 @@ port 8080 : les deux doivent tourner en même temps.
 | `A4` | `a4` | User |
 | `A5` | `a5` | User |
 
-Livres : `B1`..`B6` (2 exemplaires chacun). Emprunt préchargé : **A1 a emprunté B1**.
+Livres : `B1`..`B6` (2 exemplaires chacun). Emprunts préchargés : **L2-L5 (B2-B5) empruntés par A3+A4** (0 copies restantes).
 
 ### Tester la connexion (sans navigateur)
 
@@ -287,7 +287,7 @@ tableau passivement.
 | 6 | Backend | [`CorsConfiguration.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/CorsConfiguration.java) | Le port 4200 n'est pas le port 8080 : sans cette autorisation CORS, le navigateur refuserait la réponse. |
 | 7 | Backend | [`JwtRequestFilter.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/JwtRequestFilter.java) | Extrait le token du header, en tire le `username`, recharge l'utilisateur et le pose dans le `SecurityContext`. Filtre exécuté **avant** tout contrôleur. |
 | 8 | Backend | [`WebSecurityConfiguration.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/WebSecurityConfiguration.java) | Décide si la requête a le droit de continuer. Sans authentification valide → 401 émis par `JwtAuthenticationEntryPoint`. |
-| 9 | Backend | [`BooksController.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/controller/BooksController.java) | `@PostMapping("/books")` reçoit le JSON, `@RequestBody` le transforme en objet `Books`. `@PreAuthorize("hasRole('Admin')")` refuse si le rôle ne colle pas → 403. |
+| 9 | Backend | [`ReservationController.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/controller/ReservationController.java) | `@PostMapping("/api/reservations")` reçoit le JSON. `ReservationService` applique les RG-01→RG-06. `GlobalExceptionHandler` renvoie les messages d'erreur. |
 | 10 | Backend | [`BooksRepository.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/dao/BooksRepository.java) | `save(book)`. L'interface est vide : Spring Data en génère l'implémentation au démarrage. |
 | 11 | Backend | [`Books.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/entity/Books.java) | `@Entity` / `@Table(name = "Books")` : c'est cette classe qui dit à Hibernate quelle table et quelles colonnes viser. |
 | 12 | Base | MySQL | Hibernate émet l'`INSERT`. `spring.jpa.show-sql=true` l'affiche dans la console : lisez-le, c'est la preuve que le trajet est complet. |

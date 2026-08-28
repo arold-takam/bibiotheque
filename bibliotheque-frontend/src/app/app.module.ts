@@ -25,6 +25,8 @@ import { ForbiddenComponent } from './forbidden/forbidden.component';
 import { BorrowBookComponent } from './borrow-book/borrow-book.component';
 import { ReturnBookComponent } from './return-book/return-book.component';
 import { ReservationComponent } from './reservation/reservation.component';
+import { ReservationListComponent } from './reservation-list/reservation-list.component';
+import { ReservationFormComponent } from './reservation-form/reservation-form.component';
 
 @NgModule({
   declarations: [
@@ -45,6 +47,8 @@ import { ReservationComponent } from './reservation/reservation.component';
     BorrowBookComponent,
     ReturnBookComponent,
     ReservationComponent,
+    ReservationListComponent,
+    ReservationFormComponent,
   ],
   imports: [
     BrowserModule,
@@ -62,7 +66,7 @@ import { ReservationComponent } from './reservation/reservation.component';
     },
     UsersService,
     BooksService
-   ],
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

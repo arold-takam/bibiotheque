@@ -1,52 +1,25 @@
-<h3>Mes réservations</h3>
-<p *ngIf="message" class="alert alert-info">{{ message }}</p>
+<div class="container mt-4">
+  <h3>Gestion des réservations</h3>
 
-<h4>Réserver un livre (seulement si indisponible)</h4>
-<table class="table table-success table-striped">
-    <thead>
-        <tr>
-            <th> ID </th>
-            <th> Name </th>
-            <th> Author </th>
-            <th> Copies </th>
-            <th> Disponible </th>
-            <th> Actions </th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr *ngFor="let book of books">
-            <td> {{ book.bookId }} </td>
-            <td> {{ book.bookName }} </td>
-            <td> {{ book.bookAuthor }} </td>
-            <td> {{ book.noOfCopies }} </td>
-            <td> {{ book.disponible }} </td>
-            <td>
-                <button (click)="reserve(book.bookId)" class="btn btn-primary">Réserver</button>
-            </td>
-        </tr>
-    </tbody>
-</table>
+  <!-- Formulaire de création -->
+  <app-reservation-form (reservationCree)="onReservationCree()"></app-reservation-form>
 
-<h4>Liste</h4>
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th> ID </th>
-            <th> Livre </th>
-            <th> Statut </th>
-            <th> Expiration </th>
-            <th> Actions </th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr *ngFor="let r of reservations">
-            <td> {{ r.reservationId }} </td>
-            <td> {{ r.livreName }} </td>
-            <td> {{ r.statut }} </td>
-            <td> {{ r.dateExpiration }} </td>
-            <td>
-                <button *ngIf="r.statut === 'EN_ATTENTE' || r.statut === 'DISPONIBLE'" (click)="annuler(r.reservationId)" class="btn btn-danger">Annuler</button>
-            </td>
-        </tr>
-    </tbody>
-</table>
+  <!-- Erreur globale (annulation) -->
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    <strong>Erreur :</strong> {{ errorMessage }}
+    <button class="btn btn-sm btn-outline-danger ms-2" (click)="errorMessage = ''">Fermer</button>
+  </div>
+
+  <!-- Liste -->
+  <app-reservation-list
+    [reservations]="allReservations"
+    [loading]="loading"
+    [errorMessage]="errorMessage"
+    (annuler)="onAnnuler($event)">
+  </app-reservation-list>
+
+  <!-- Bouton rafraîchir -->
+  <button class="btn btn-outline-secondary btn-sm mt-3" (click)="loadReservations()">
+    🔄 Rafraîchir
+  </button>
+</div>

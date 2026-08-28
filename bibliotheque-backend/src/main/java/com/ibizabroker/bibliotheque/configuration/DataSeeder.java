@@ -16,14 +16,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 /**
- * Pré-enregistre au démarrage la donnée d'évaluation (CA encadrer) :
- *  - 2 rôles : Admin, User
- *  - 5 comptes utilisateurs : A1 (Admin + User) et A2..A5 (User), mots de passe a1..a5
- *  - 6 livres : B1..B6, 2 exemplaires chacun, disponibles
- *  - 1 emprunt préchargé : A1 a emprunté B1 (borrowId = 1)
- * <p>
+ * Pré-enregistre les données de test (CA encadré) :
+ * <ul>
+ *   <li>2 rôles : Admin, User</li>
+ *   <li>5 comptes : A1 (Admin+User), A2-A5 (User), mots de passe a1..a5</li>
+ *   <li>6 livres : B1..B6, 2 exemplaires chacun</li>
+ *   <li>L1 (B1) : Disponible — aucun emprunt en cours</li>
+ *   <li>L2-L5 (B2-B5) : Tous empruntés et non rendus (0 exemplaires restants)</li>
+ *   <li>L6 (B6) : Disponible — aucun emprunt en cours</li>
+ *   <li>A1 : Réservataire principal</li>
+ *   <li>A2 : Celui qui saturera son quota (3 réservations)</li>
+ *   <li>A3 : L'emprunteur — détient L2-L5</li>
+ * </ul>
  * Idempotent : rien n'est recréé si les tables contiennent déjà des données.
- * C'est la source fiable des comptes/livres (le seed.sh Docker cible MySQL est obsolète).
  */
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -57,7 +62,7 @@ public class DataSeeder implements CommandLineRunner {
         Set<Role> roles = seedRoles();
         List<Users> users = seedUsers(roles);
         List<Books> books = seedBooks();
-        seedPreloadBorrow(users, books);
+        seedPreloadBorrows(users, books);
     }
 
     private Set<Role> seedRoles() {
@@ -78,7 +83,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private List<Users> seedUsers(Set<Role> roles) {
         if (usersRepository.count() > 0) {
-            System.out.println("[seed] Comptes A1..A5 déjà présents, rien à faire.");
+            System.out.println("[seed] Comptes déjà présents, rien à faire.");
             return usersRepository.findAll();
         }
         Role adminRole = roles.stream().filter(r -> "Admin".equals(r.getRoleName())).findFirst().orElseThrow();
@@ -90,8 +95,6 @@ public class DataSeeder implements CommandLineRunner {
             user.setUsername(identifiant);
             user.setName(identifiant);
             user.setPassword(passwordEncoder.encode(passwordTo(identifiant)));
-            // A1 est le compte "full flux" (Admin + User) : login -> crud -> borrow -> return -> logout.
-            // A2..A5 sont des adhérents classiques (User) : emprunt / retour.
             Set<Role> userRoles = new HashSet<>();
             userRoles.add(userRole);
             if (identifiant.equals("A1")) {
@@ -106,11 +109,10 @@ public class DataSeeder implements CommandLineRunner {
 
     private List<Books> seedBooks() {
         if (booksRepository.count() > 0) {
-            System.out.println("[seed] Livres B1..B6 déjà présents, rien à faire.");
+            System.out.println("[seed] Livres déjà présents, rien à faire.");
             return booksRepository.findAll();
         }
         List<Books> created = new ArrayList<>();
-        int rank = 1;
         for (String identifiant : BOOK_IDENTIFIANTS) {
             Books book = new Books();
             book.setBookName(identifiant);
@@ -119,43 +121,68 @@ public class DataSeeder implements CommandLineRunner {
             book.setNoOfCopies(COPIES_PAR_LIVRE);
             book.setDisponible(true);
             created.add(booksRepository.save(book));
-            rank++;
         }
         System.out.println("[seed] 6 livres créés : B1..B6 (2 exemplaires chacun, disponibles).");
         return created;
     }
 
     /**
-     * Précharge l'emprunt A1 -> B1 (CA encadrer : "A1 a emprunté B1").
-     * B1 repasse à 1 exemplaire disponible. Idempotent : un seul borrow seed si la table est vide.
+     * Précharge les emprunts selon le CA :
+     * <ul>
+     *   <li>L1 (B1) : Disponible — aucun emprunt</li>
+     *   <li>L2-L5 (B2-B5) : Tous empruntés (2 copies chacun) par A3 + A4 → 0 restants, indisponibles</li>
+     *   <li>L6 (B6) : Disponible — aucun emprunt</li>
+     * </ul>
      */
-    private void seedPreloadBorrow(List<Users> users, List<Books> books) {
+    private void seedPreloadBorrows(List<Users> users, List<Books> books) {
         if (borrowRepository.count() > 0) {
+            System.out.println("[seed] Emprunts déjà présents, rien à faire.");
             return;
         }
-        Users a1 = users.stream().filter(u -> "A1".equals(u.getUsername())).findFirst().orElseThrow();
-        Books b1 = books.stream().filter(b -> "B1".equals(b.getBookName())).findFirst().orElseThrow();
 
+        Users a3 = findUser(users, "A3");
+        Users a4 = findUser(users, "A4");
+
+        // L2-L5 (B2-B5) : toutes les copies empruntées par A3 + A4 → indisponibles
+        for (String bookName : List.of("B2", "B3", "B4", "B5")) {
+            Books book = findBook(books, bookName);
+
+            // 1ère copie → A3
+            createBorrow(a3.getUserId(), book);
+            book.borrowBook();
+
+            // 2ème copie → A4
+            createBorrow(a4.getUserId(), book);
+            book.borrowBook();
+
+            book.setDisponible(book.getNoOfCopies() > 0);
+            booksRepository.save(book);
+            System.out.println("[seed] " + bookName + " : 2 copies empruntées (A3+A4), restant : " + book.getNoOfCopies() + ", disponible=" + book.getDisponible());
+        }
+
+        System.out.println("[seed] Seed terminé : L1(B1) dispo, L2-L5(B2-B5) empruntés, L6(B6) dispo.");
+    }
+
+    private void createBorrow(Integer userId, Books book) {
         Borrow borrow = new Borrow();
-        borrow.setBookId(b1.getBookId());
-        borrow.setUserId(a1.getUserId());
+        borrow.setBookId(book.getBookId());
+        borrow.setUserId(userId);
         Date now = new Date();
         borrow.setIssueDate(now);
         borrow.setDueDate(addDays(now, DUREE_EMPRUNT_JOURS));
         borrow.setReturnDate(null);
         borrowRepository.save(borrow);
+    }
 
-        // B1 : un exemplaire est sorti -> 2 -> 1, toujours disponible.
-        b1.borrowBook();
-        b1.setDisponible(b1.getNoOfCopies() != null && b1.getNoOfCopies() > 0);
-        booksRepository.save(b1);
+    private Users findUser(List<Users> users, String username) {
+        return users.stream().filter(u -> username.equals(u.getUsername())).findFirst().orElseThrow();
+    }
 
-        System.out.println("[seed] A1 a emprunté B1 (borrowId=" + borrow.getBorrowId()
-                + ") ; B1 restant : " + b1.getNoOfCopies() + " exemplaire(s).");
+    private Books findBook(List<Books> books, String bookName) {
+        return books.stream().filter(b -> bookName.equals(b.getBookName())).findFirst().orElseThrow();
     }
 
     private static String passwordTo(String identifiant) {
-        // Convention CA : mot de passe en minuscule, identique à l'identifiant.
         return identifiant.toLowerCase();
     }
 

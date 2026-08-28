@@ -1,30 +1,32 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Reservation } from '../_model/reservation';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class ReservationService {
 
-  private baseURL = "http://localhost:8080/api/reservations";
+  private baseURL = 'http://localhost:8080/api/reservations';
 
   constructor(private httpClient: HttpClient) { }
 
-  getReservations(): Observable<Reservation[]> {
-    return this.httpClient.get<Reservation[]>(`${this.baseURL}`);
+  getReservations(statut?: string): Observable<Reservation[]> {
+    let params = new HttpParams();
+    if (statut && statut !== 'TOUS') {
+      params = params.set('statut', statut);
+    }
+    return this.httpClient.get<Reservation[]>(this.baseURL, { params });
   }
 
-  getReservationsByAdherent(adherentId: number): Observable<Reservation[]> {
-    return this.httpClient.get<Reservation[]>(`${this.baseURL}?adherentId=${adherentId}`);
+  getReservationById(id: number): Observable<Reservation> {
+    return this.httpClient.get<Reservation>(`${this.baseURL}/${id}`);
   }
 
-  reserve(payload: { livreId: number, adherentId: number }): Observable<Reservation> {
-    return this.httpClient.post<Reservation>(`${this.baseURL}`, payload);
+  createReservation(payload: { livreId: number; adherentId: number }): Observable<Reservation> {
+    return this.httpClient.post<Reservation>(this.baseURL, payload);
   }
 
-  annuler(reservationId: number): Observable<Reservation> {
-    return this.httpClient.patch<Reservation>(`${this.baseURL}/${reservationId}/annuler`, {});
+  annulerReservation(id: number): Observable<Reservation> {
+    return this.httpClient.patch<Reservation>(`${this.baseURL}/${id}/annuler`, {});
   }
 }
