@@ -27,7 +27,7 @@ Application full-stack de gestion de bibliothèque : **Spring Boot** (API REST) 
 2. [État du dépôt : ce qui marche, ce qui ne marche pas](#2-état-du-dépôt--ce-qui-marche-ce-qui-ne-marche-pas)
 3. [Arborescence](#3-arborescence)
 4. [Démarrer le projet](#4-démarrer-le-projet)
-5. [Créer le premier compte](#5-créer-le-premier-compte)
+5. [Comptes de départ (seed)](#5-comptes-de-départ-seed)
 6. [Le trajet d'une donnée : du clic à la base](#6-le-trajet-dune-donnée--du-clic-à-la-base)
 7. [Les API](#7-les-api)
 8. [Rappel Git](#8-rappel-git)
@@ -54,6 +54,11 @@ c'est à régler avant 8h30, pas pendant l'exercice.
 ---
 
 ## 2. État du dépôt : ce qui marche, ce qui ne marche pas
+
+> ✅ **Mise à jour** : ce dépôt a depuis été **rendu fonctionnel de bout en bout**
+> (voir plus bas). Cette section d'origine liste volontairement les pièges de
+> l'exercice ; la plupart sont désormais **résolus** : Docker ajouté,
+> PostgreSQL migré, seed `A1..A5`/`B1..B6` préchargé, Swagger disponible.
 
 Ce dépôt est un projet **réel et daté**. Il ne se lance pas tout seul sur une
 machine d'aujourd'hui. C'est volontaire : savoir démarrer un projet inconnu,
@@ -154,21 +159,51 @@ Côté frontend, un dossier = un écran, et tout ce qui parle au réseau vit dan
 
 ## 4. Démarrer le projet
 
-### 4.1 La base de données
+> 💡 **Recommandé** : la méthode **Docker Compose** démarre la base + le backend +
+> le frontend en une seule commande, de zéro. (Le CA d'évaluation est construit
+> pour fonctionner ainsi.)
 
-Le backend ne crée pas le schéma, seulement les tables. Il faut donc :
+### 4.0 — Méthode one-shot Docker (recommandée)
 
-```sql
-CREATE DATABASE bibliotheque;
+Depuis la racine du projet (`bibiotheque/`) :
+
+```bash
+docker compose up --build -d
 ```
 
-Les identifiants attendus sont dans
-[`application.properties`](bibliotheque-backend/src/main/resources/application.properties) :
-utilisateur `root`, mot de passe `mysql`, port `3306`. Adaptez le fichier à
-votre installation **ou** votre installation au fichier — mais sachez lequel
-des deux vous avez fait.
+- `db`      : **PostgreSQL 15** (conteneur `bibliotheque-db`, port `5432`).
+- `backend` : Spring Boot (conteneur `bibliotheque-backend`, port `8080`).
+- `frontend`: Angular compilé servi par nginx (conteneur `bibliotheque-frontend`, port `4200`).
 
-### 4.2 Le backend
+Vérifier le démarrage :
+
+```bash
+docker compose ps                       # 3 conteneurs "Up"
+docker compose logs backend | grep seed # A1..A5 / B1..B6 / A1 emprunte B1
+```
+
+Changer de conteneur/down proprement :
+
+```bash
+docker compose down                     # stop + enlève les conteneurs (garde le volume)
+docker compose down -v                  # en plus, supprime le volume DB (repart zerstart du seed)
+```
+
+> Le backend, en Docker, pointe sur `jdbc:postgresql://db:5432/bibliotheque`
+> grâce à `SPRING_DATASOURCE_URL` défini dans `docker-compose.yml`.
+
+### 4.1 — En local (fallback, sans Docker)
+
+La base doit exister et les identifiants doivent correspondre à
+[`application.properties`](bibliotheque-backend/src/main/resources/application.properties) —
+désormais **PostgreSQL** (`jdbc:postgresql://localhost:5432/bibliotheque`),
+utilisateur `bibliotheque`, mot de passe `bibliotheque`.
+
+```bash
+docker compose up -d db          # ou un PostgreSQL local
+```
+
+### 4.2 — Le backend
 
 ```bash
 cd bibliotheque-backend
@@ -176,13 +211,8 @@ cd bibliotheque-backend
 ```
 
 Au démarrage, `spring.jpa.hibernate.ddl-auto=update` demande à Hibernate de
-créer les tables manquantes. Vérifiez-le tout de suite :
-
-```sql
-USE bibliotheque;
-SHOW TABLES;
-DESCRIBE books;
-```
+créer les tables manquantes, puis le `DataSeeder` insère les données de
+démonstration si la base est vide.
 
 > Si Maven s'arrête sur `NoSuchFieldError ... JCTree$JCImport`, vous compilez
 > avec un JDK trop récent pour ce projet.
@@ -203,50 +233,30 @@ port 8080 : les deux doivent tourner en même temps.
 
 ---
 
-## 5. Créer le premier compte
+## 5. Comptes de départ (seed)
 
-Il n'y a aucun utilisateur en base, et `POST /admin/users` exige déjà un token.
-Le premier administrateur s'insère donc directement en SQL, **après** le premier
-démarrage du backend — sinon les tables n'existent pas encore.
+> ✅ **Plus rien à faire à la main** : le `DataSeeder` insère au premier
+> démarrage tous les comptes et livres de la démonstration. Aucune insertion SQL
+> manuelle n'est nécessaire (contrairement à l'ancienne procédure ci-dessous).
 
-Le mot de passe doit être un hachage **BCrypt** : `WebSecurityConfiguration`
-déclare un `BCryptPasswordEncoder`, il n'acceptera jamais un mot de passe en
-clair. Le hachage ci-dessous correspond à `admin123`.
+### Comptes préchargés
 
-```sql
-USE bibliotheque;
+| Utilisateur | Mot de passe | Rôles |
+|---|---|---|
+| `A1` | `a1` | Admin + User |
+| `A2` | `a2` | User |
+| `A3` | `a3` | User |
+| `A4` | `a4` | User |
+| `A5` | `a5` | User |
 
--- 1. Regardez d'abord ce qu'Hibernate a réellement créé.
---    Les noms ci-dessous suivent la convention Spring Boot
---    (camelCase -> snake_case), mais vérifiez-les, ne les supposez pas.
-SHOW TABLES;
-DESCRIBE users;
-DESCRIBE role;
+Livres : `B1`..`B6` (2 exemplaires chacun). Emprunt préchargé : **A1 a emprunté B1**.
 
--- 2. Puis insérez, en adaptant aux colonnes que DESCRIBE vous a montrées.
-INSERT INTO role (role_name) VALUES ('Admin'), ('User');
-
-INSERT INTO users (user_id, username, name, password)
-VALUES (1, 'admin', 'Administrateur',
-        '$2b$10$RN5ij7XXjDpRBALhITW.2uzYGontX4U9c9ZRH5i3e.5l6RvkjZ696');
-
-INSERT INTO user_role (user_id, role_id)
-VALUES (1, (SELECT role_id FROM role WHERE role_name = 'Admin'));
-
--- 3. Si une table hibernate_sequence existe, avancez son compteur au-delà
---    des identifiants que vous venez de poser à la main, sinon la prochaine
---    création depuis l'application entrera en collision.
-UPDATE hibernate_sequence SET next_val = 100 WHERE next_val < 100;
-```
-
-Connexion : **admin / admin123**.
-
-Vérification en ligne de commande, sans passer par le navigateur :
+### Tester la connexion (sans navigateur)
 
 ```bash
 curl -X POST http://localhost:8080/authenticate \
      -H "Content-Type: application/json" \
-     -d '{"username":"admin","password":"admin123"}'
+     -d '{"username":"A1","password":"a1"}'
 ```
 
 Vous devez recevoir un JSON contenant `jwtToken`. Gardez-le : il sert pour tous
@@ -255,6 +265,9 @@ les autres appels.
 ```bash
 curl http://localhost:8080/admin/users -H "Authorization: Bearer <le_token>"
 ```
+
+> NB : le libellé de la section a changé (c'était « Créer le premier compte »).
+> Ancienne procédure SQL conservée ci-dessous pour référence historique.
 
 ---
 
