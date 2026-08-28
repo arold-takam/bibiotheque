@@ -6,13 +6,13 @@
 
 [![Spring Boot](https://img.shields.io/badge/Spring-6DB33F?style=for-the-badge&logo=spring&logoColor=white)]()
 [![Angular](https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white)]()
-[![MySQL](https://img.shields.io/badge/MySQL-00000F?style=for-the-badge&logo=mysql&logoColor=white)]()
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)]()
 [![Hibernate](https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=Hibernate&logoColor=white)]()
 [![Maven](https://img.shields.io/badge/apache_maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)]()
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white)]()
 
 Application full-stack de gestion de bibliothèque : **Spring Boot** (API REST) +
-**Angular** (interface) + **MySQL** (persistance).
+**Angular** (interface) + **PostgreSQL** (persistance).
 
 * Deux profils : **Admin** (CRUD livres et utilisateurs) et **User** (emprunter / rendre).
 * Authentification par **JWT**.
@@ -63,7 +63,7 @@ c'est d'abord savoir diagnostiquer pourquoi il refuse de démarrer.
 
 * Un backend Spring Boot complet : entités, repositories, contrôleurs, sécurité JWT.
 * Un frontend Angular complet : 15 composants, routage, guard, intercepteur HTTP.
-* Aucune donnée : la base est vide au premier démarrage.
+* Un **seed idempotent** (`DataSeeder`) au premier démarrage : 5 comptes `A1..A5` (A1 = Admin+User, A2-A5 = User, mdp `a1..a5`), 6 livres `B1..B6` (2 exemplaires chacun), et un **emprunt préchargé : A1 a emprunté B1**.
 
 ### Ce qui manque ou coince — c'est votre travail
 
@@ -419,3 +419,6 @@ Quelques réflexes :
 | Emprunter | ![Emprunter](./screenshots/borrow_book.png) |
 | Rendre | ![Rendre](./screenshots/return_book.png) |
 | Accès refusé | ![Forbidden](./screenshots/forbidden.png) |
+
+
+>FREEBUFF_SESSION = freebuff --continue 2026-08-21T15-42-51.114Z

@@ -17,6 +17,8 @@ public class Books {
     String bookGenre;
     Integer noOfCopies;
 
+    private Boolean disponible = true;
+
     public void borrowBook() {
         this.noOfCopies--;
     }

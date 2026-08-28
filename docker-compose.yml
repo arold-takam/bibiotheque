@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: bibliotheque-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bibliotheque
+      POSTGRES_USER: bibliotheque
+      POSTGRES_PASSWORD: bibliotheque
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bibliotheque -d bibliotheque"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./bibliotheque-backend
+    container_name: bibliotheque-backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://db:5432/bibliotheque"
+      SPRING_DATASOURCE_USERNAME: bibliotheque
+      SPRING_DATASOURCE_PASSWORD: bibliotheque
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./bibliotheque-frontend
+    container_name: bibliotheque-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
