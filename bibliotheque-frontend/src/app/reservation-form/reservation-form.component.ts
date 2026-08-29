@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ViewChild, ElementRef } from '@angular/core';
 import { Books } from '../_model/books';
 import { Users } from '../_model/users';
 import { BooksService } from '../_service/books.service';
@@ -12,6 +12,9 @@ import { UsersService } from '../_service/users.service';
 export class ReservationFormComponent implements OnInit {
 
   @Output() reservationCree = new EventEmitter<void>();
+
+  @ViewChild('bookSelect') bookSelectRef!: ElementRef<HTMLSelectElement>;
+  @ViewChild('userSelect') userSelectRef!: ElementRef<HTMLSelectElement>;
 
   books: Books[] = [];
   users: Users[] = [];
@@ -28,6 +31,16 @@ export class ReservationFormComponent implements OnInit {
   ngOnInit(): void {
     this.booksService.getBooksList().subscribe(data => this.books = data);
     this.usersService.getUsersList().subscribe(data => this.users = data);
+  }
+
+  onBookChange(event: Event): void {
+    const val = (event.target as HTMLSelectElement).value;
+    this.selectedLivreId = val ? Number(val) : null;
+  }
+
+  onUserChange(event: Event): void {
+    const val = (event.target as HTMLSelectElement).value;
+    this.selectedAdherentId = val ? Number(val) : null;
   }
 
   get formValid(): boolean {

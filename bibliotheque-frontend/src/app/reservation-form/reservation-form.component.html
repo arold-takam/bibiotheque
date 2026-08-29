@@ -4,9 +4,9 @@
   <div class="row g-3 align-items-end">
     <div class="col-md-5">
       <label class="form-label">Livre</label>
-      <select class="form-select" [(ngModel)]="selectedLivreId">
-        <option [ngValue]="null" disabled>— Choisir un livre —</option>
-        <option *ngFor="let b of books" [ngValue]="b.bookId">
+      <select #bookSelect class="form-select" (change)="onBookChange($event)">
+        <option [value]="null" disabled selected>— Choisir un livre —</option>
+        <option *ngFor="let b of books" [value]="b.bookId">
           {{ b.bookName }} ({{ b.noOfCopies }} ex.)
         </option>
       </select>
@@ -14,9 +14,9 @@
 
     <div class="col-md-5">
       <label class="form-label">Adhérent</label>
-      <select class="form-select" [(ngModel)]="selectedAdherentId">
-        <option [ngValue]="null" disabled>— Choisir un adhérent —</option>
-        <option *ngFor="let u of users" [ngValue]="u.userId">
+      <select #userSelect class="form-select" (change)="onUserChange($event)">
+        <option [value]="null" disabled selected>— Choisir un adhérent —</option>
+        <option *ngFor="let u of users" [value]="u.userId">
           {{ u.name }} ({{ u.username }})
         </option>
       </select>
