@@ -50,7 +50,7 @@ export function Navbar() {
 
           {isLoggedIn ? (
             <div className="flex items-center gap-3">
-              <Tooltip content={user?.role?.map(r => r.roleName).join(', ') || ''}>
+              <Tooltip content={user?.role?.map((r: {roleName: string}) => r.roleName).join(', ') || ''}>
                 <span className="text-sm text-gray-300">
                   👋 <strong className="text-white">{user?.name}</strong>
                 </span>
