@@ -79,6 +79,28 @@ export function Reservations() {
     }
   };
 
+  // Update réservation : EN_ATTENTE → DISPONIBLE
+  const handleDisponible = async (id: number) => {
+    try {
+      await reservationService.markDisponible(id);
+      toast.success('Réservation passée à DISPONIBLE');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erreur transition disponible');
+    }
+  };
+
+  // Update réservation : DISPONIBLE → HONOREE
+  const handleHonorer = async (id: number) => {
+    try {
+      await reservationService.markHonoree(id);
+      toast.success('Réservation honorée');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erreur transition honorer');
+    }
+  };
+
   const formValid = selectedBook !== '' && selectedUser !== '';
 
   return (
@@ -199,7 +221,23 @@ export function Reservations() {
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-sm">{r.dateReservation}</td>
                   <td className="px-4 py-3 text-gray-400 text-sm">{r.dateExpiration}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-2">
+                    {r.statut === 'EN_ATTENTE' && (
+                      <button
+                        onClick={() => handleDisponible(r.reservationId)}
+                        className="px-3 py-1.5 text-xs bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-500/30 rounded-md transition-colors"
+                      >
+                        Marquer disponible
+                      </button>
+                    )}
+                    {r.statut === 'DISPONIBLE' && (
+                      <button
+                        onClick={() => handleHonorer(r.reservationId)}
+                        className="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 rounded-md transition-colors"
+                      >
+                        Honorer
+                      </button>
+                    )}
                     {(r.statut === 'EN_ATTENTE' || r.statut === 'DISPONIBLE') && (
                       <button
                         onClick={() => handleCancel(r.reservationId)}

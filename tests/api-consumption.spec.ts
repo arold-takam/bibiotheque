@@ -1,21 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
-// UI consomme l'API : capture des réponses HTTP réelles retournées aux appels
-// effectués par l'interface React (via axios / fetch).
+// Tests CRUD complet admin + transitions réservation (fonctionnalités ajoutées)
 const BASE = 'http://localhost:3000';
 const API = 'http://localhost:8080';
-
-type Resp = { method: string; url: string; status: number };
-
-// Récupère un token API directement (pour les checks backend purs si besoin)
-async function apiToken(user: string, pass: string): Promise<string> {
-  const r = await fetch(`${API}/authenticate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: user, password: pass }),
-  });
-  const body = await r.json();
-  return body.jwtToken;
-}
 
 async function login(page: Page, user: string, pass: string) {
   await page.goto(`${BASE}/login`);
@@ -28,6 +14,79 @@ async function login(page: Page, user: string, pass: string) {
   ]);
   await page.waitForTimeout(1200);
 }
+
+async function apiToken(user: string, pass: string): Promise<string> {
+  const r = await fetch(`${API}/authenticate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user, password: pass }),
+  });
+  const body = await r.json();
+  return body.jwtToken;
+}
+
+// ═══════════ 1. LIVRES — UPDATE (nouveau) ═══════════
+test.describe('Livres — CRUD complet (update ajouté)', () => {
+  test('Modifier un livre → PUT /admin/books/{id} + listé modifié', async ({ page }) => {
+    await login(page, 'A1', 'a1');
+    await page.goto(`${BASE}/books`);
+    await page.waitForTimeout(1800);
+    // cliquer Modifier sur la première ligne
+    const editBtn = page.locator('button:has-text("Modifier")').first();
+    await editBtn.click();
+    await page.waitForTimeout(600);
+    // le formulaire doit être pré-rempli (le champ Nom non vide)
+    const nameVal = await page.locator('input[placeholder="Nom"]').inputValue();
+    expect(nameVal.length).toBeGreaterThan(0);
+    // modifier le genre
+    const genreField = page.locator('input[placeholder="Genre"]');
+    await genreField.fill('Modifié-' + Date.now());
+    await page.click('button:has-text("Enregistrer les modifications")');
+    await page.waitForTimeout(2000);
+    // le toast de succès doit apparaître
+    await expect(page.locator('text=Livre modifié')).toBeVisible({ timeout: 5000 });
+    await page.screenshot({ path: 'tests/results/crud-books-update.png', fullPage: true });
+  });
+});
+
+// ═══════════ 2. UTILISATEURS — CREATE + UPDATE (nouveau) ═══════════
+test.describe('Utilisateurs — CRUD (create + update ajoutés)', () => {
+  test('Créer un utilisateur → POST /admin/users + listé', async ({ page }) => {
+    await login(page, 'A1', 'a1');
+    await page.goto(`${BASE}/users`);
+    await page.waitForTimeout(1800);
+    await page.click('button:has-text("Ajouter")');
+    await page.waitForTimeout(500);
+    const uname = 'E2E_' + Date.now();
+    await page.locator('input[placeholder="Nom"]').fill('Test E2E');
+    await page.locator('input[placeholder="Username"]').fill(uname);
+    await page.locator('input[type="password"]').fill('pass123');
+    await page.locator('select').first().selectOption('User');
+    await page.click('button:has-text("Créer")');
+    await page.waitForTimeout(2000);
+    await expect(page.locator('text=Utilisateur créé')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('td').filter({ hasText: uname }).first()).toBeVisible();
+    await page.screenshot({ path: 'tests/results/crud-users-create.png', fullPage: true });
+  });
+
+  test('Modifier un utilisateur → PUT /admin/users/{id}', async ({ page }) => {
+    await login(page, 'A1', 'a1');
+    await page.goto(`${BASE}/users`);
+    await page.waitForTimeout(1800);
+    const editBtn = page.locator('button:has-text("Modifier")').first();
+    await editBtn.click();
+    await page.waitForTimeout(600);
+    const nameField = page.locator('input[placeholder="Nom"]');
+    const current = await nameField.inputValue();
+    await nameField.fill(current + ' MOD');
+    await page.click('button:has-text("Enregistrer les modifications")');
+    await page.waitForTimeout(2000);
+    await expect(page.locator('text=Utilisateur modifié')).toBeVisible({ timeout: 5000 });
+    await page.screenshot({ path: 'tests/results/crud-users-update.png', fullPage: true });
+  });
+});
+
+type Resp = { method: string; url: string; status: number };
 
 async function trackApi(page: Page, collected: Resp[]) {
   page.on('response', (r) => {

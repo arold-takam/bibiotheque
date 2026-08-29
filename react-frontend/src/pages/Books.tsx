@@ -8,6 +8,7 @@ export function Books() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null); // null = create
   const [form, setForm] = useState({ bookName: '', bookAuthor: '', bookGenre: '', noOfCopies: 1 });
 
   const load = async () => {
@@ -19,15 +20,40 @@ export function Books() {
 
   useEffect(() => { load(); }, []);
 
+  const resetForm = () => {
+    setForm({ bookName: '', bookAuthor: '', bookGenre: '', noOfCopies: 1 });
+    setEditId(null);
+    setShowForm(false);
+  };
+
   const handleCreate = async () => {
     try {
       await booksService.create({ ...form, disponible: true });
       toast.success('Livre créé');
-      setShowForm(false);
-      setForm({ bookName: '', bookAuthor: '', bookGenre: '', noOfCopies: 1 });
+      resetForm();
       load();
     } catch { toast.error('Erreur création'); }
   };
+
+  // Update : ouvre le formulaire pré-rempli pour ce livre
+  const startEdit = (b: Book) => {
+    setEditId(b.bookId);
+    setForm({ bookName: b.bookName, bookAuthor: b.bookAuthor, bookGenre: b.bookGenre, noOfCopies: b.noOfCopies });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUpdate = async () => {
+    if (editId === null) return;
+    try {
+      await booksService.update(editId, { ...form, disponible: form.noOfCopies > 0 });
+      toast.success('Livre modifié');
+      resetForm();
+      load();
+    } catch { toast.error('Erreur modification'); }
+  };
+
+  const handleSubmit = () => (editId === null ? handleCreate() : handleUpdate());
 
   const handleDelete = async (id: number) => {
     if (!confirm('Supprimer ce livre ?')) return;
@@ -39,7 +65,7 @@ export function Books() {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">📖 Livres</h1>
-        <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm">
+        <button onClick={() => { setShowForm(!showForm); if (showForm) setEditId(null); }} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm">
           {showForm ? '✕ Annuler' : '➕ Ajouter'}
         </button>
       </div>
@@ -52,7 +78,9 @@ export function Books() {
             <input placeholder="Genre" value={form.bookGenre} onChange={e => setForm({...form, bookGenre: e.target.value})} className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
             <input type="number" placeholder="Exemplaires" value={form.noOfCopies} onChange={e => setForm({...form, noOfCopies: +e.target.value})} className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
           </div>
-          <button onClick={handleCreate} disabled={!form.bookName} className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg transition-colors">Créer</button>
+          <button onClick={handleSubmit} disabled={!form.bookName} className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg transition-colors">
+            {editId === null ? 'Créer' : 'Enregistrer les modifications'}
+          </button>
         </div>
       )}
 
@@ -79,7 +107,10 @@ export function Books() {
                       {b.noOfCopies} {b.disponible ? '✅' : '🔒'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-2">
+                    <button onClick={() => startEdit(b)} className="px-3 py-1 text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-md hover:bg-blue-600/40 transition-colors">
+                      Modifier
+                    </button>
                     <button onClick={() => handleDelete(b.bookId)} className="px-3 py-1 text-xs bg-red-600/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-600/40 transition-colors">
                       Supprimer
                     </button>

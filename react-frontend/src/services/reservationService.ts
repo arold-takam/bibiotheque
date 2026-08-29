@@ -21,6 +21,17 @@ export const reservationService = {
     return data;
   },
 
+  // Transitions de statut (update réservation) : PUT /{id}/disponible, /{id}/honorer
+  async markDisponible(id: number): Promise<Reservation> {
+    const { data } = await apiClient.put<Reservation>(`${ENDPOINTS.RESERVATIONS}/${id}/disponible`);
+    return data;
+  },
+
+  async markHonoree(id: number): Promise<Reservation> {
+    const { data } = await apiClient.put<Reservation>(`${ENDPOINTS.RESERVATIONS}/${id}/honorer`);
+    return data;
+  },
+
   async remove(id: number): Promise<void> {
     await apiClient.delete(`${ENDPOINTS.RESERVATIONS}/${id}`);
   },
