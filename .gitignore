@@ -1,2 +1,13 @@
 # Réglages locaux des outils
 .claude/
+
+# Dépendances & artefacts de build
+node_modules/
+dist/
+dist-ssr/
+
+# Résultats de tests e2e (Playwright)
+tests/results/
+
+# Logs
+*.log

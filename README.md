@@ -5,14 +5,14 @@
 </h1>
 
 [![Spring Boot](https://img.shields.io/badge/Spring-6DB33F?style=for-the-badge&logo=spring&logoColor=white)]()
-[![Angular](https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white)]()
-[![MySQL](https://img.shields.io/badge/MySQL-00000F?style=for-the-badge&logo=mysql&logoColor=white)]()
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)]()
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)]()
 [![Hibernate](https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=Hibernate&logoColor=white)]()
 [![Maven](https://img.shields.io/badge/apache_maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)]()
-[![Bootstrap](https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white)]()
+[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)]()
 
 Application full-stack de gestion de bibliothèque : **Spring Boot** (API REST) +
-**Angular** (interface) + **MySQL** (persistance).
+**React 19 + Vite** (interface) + **PostgreSQL** (persistance).
 
 * Deux profils : **Admin** (CRUD livres et utilisateurs) et **User** (emprunter / rendre).
 * Authentification par **JWT**.
@@ -27,7 +27,7 @@ Application full-stack de gestion de bibliothèque : **Spring Boot** (API REST) 
 2. [État du dépôt : ce qui marche, ce qui ne marche pas](#2-état-du-dépôt--ce-qui-marche-ce-qui-ne-marche-pas)
 3. [Arborescence](#3-arborescence)
 4. [Démarrer le projet](#4-démarrer-le-projet)
-5. [Créer le premier compte](#5-créer-le-premier-compte)
+5. [Comptes de départ (seed)](#5-comptes-de-départ-seed)
 6. [Le trajet d'une donnée : du clic à la base](#6-le-trajet-dune-donnée--du-clic-à-la-base)
 7. [Les API](#7-les-api)
 8. [Rappel Git](#8-rappel-git)
@@ -55,6 +55,11 @@ c'est à régler avant 8h30, pas pendant l'exercice.
 
 ## 2. État du dépôt : ce qui marche, ce qui ne marche pas
 
+> ✅ **Mise à jour** : ce dépôt a depuis été **rendu fonctionnel de bout en bout**
+> (voir plus bas). Cette section d'origine liste volontairement les pièges de
+> l'exercice ; la plupart sont désormais **résolus** : Docker ajouté,
+> PostgreSQL migré, seed `A1..A5`/`B1..B6` préchargé, Swagger disponible.
+
 Ce dépôt est un projet **réel et daté**. Il ne se lance pas tout seul sur une
 machine d'aujourd'hui. C'est volontaire : savoir démarrer un projet inconnu,
 c'est d'abord savoir diagnostiquer pourquoi il refuse de démarrer.
@@ -63,7 +68,7 @@ c'est d'abord savoir diagnostiquer pourquoi il refuse de démarrer.
 
 * Un backend Spring Boot complet : entités, repositories, contrôleurs, sécurité JWT.
 * Un frontend Angular complet : 15 composants, routage, guard, intercepteur HTTP.
-* Aucune donnée : la base est vide au premier démarrage.
+* Un **seed idempotent** (`DataSeeder`) au premier démarrage : 5 comptes `A1..A5` (A1 = Admin+User, A2-A5 = User, mdp `a1..a5`), 6 livres `B1..B6` (2 exemplaires chacun), et **emprunts préchargés : A3+A4 détient L2-L5** (0 copies restantes, indisponibles).
 
 ### Ce qui manque ou coince — c'est votre travail
 
@@ -154,21 +159,51 @@ Côté frontend, un dossier = un écran, et tout ce qui parle au réseau vit dan
 
 ## 4. Démarrer le projet
 
-### 4.1 La base de données
+> 💡 **Recommandé** : la méthode **Docker Compose** démarre la base + le backend +
+> le frontend en une seule commande, de zéro. (Le CA d'évaluation est construit
+> pour fonctionner ainsi.)
 
-Le backend ne crée pas le schéma, seulement les tables. Il faut donc :
+### 4.0 — Méthode one-shot Docker (recommandée)
 
-```sql
-CREATE DATABASE bibliotheque;
+Depuis la racine du projet (`bibiotheque/`) :
+
+```bash
+docker compose up --build -d
 ```
 
-Les identifiants attendus sont dans
-[`application.properties`](bibliotheque-backend/src/main/resources/application.properties) :
-utilisateur `root`, mot de passe `mysql`, port `3306`. Adaptez le fichier à
-votre installation **ou** votre installation au fichier — mais sachez lequel
-des deux vous avez fait.
+- `db`      : **PostgreSQL 15** (conteneur `bibliotheque-db`, port `5432`).
+- `backend` : Spring Boot (conteneur `bibliotheque-backend`, port `8080`).
+- `frontend`: Angular compilé servi par nginx (conteneur `bibliotheque-frontend`, port `4200`).
 
-### 4.2 Le backend
+Vérifier le démarrage :
+
+```bash
+docker compose ps                       # 3 conteneurs "Up"
+docker compose logs backend | grep seed # A1..A5 / B1..B6 / A1 emprunte B1
+```
+
+Changer de conteneur/down proprement :
+
+```bash
+docker compose down                     # stop + enlève les conteneurs (garde le volume)
+docker compose down -v                  # en plus, supprime le volume DB (repart zerstart du seed)
+```
+
+> Le backend, en Docker, pointe sur `jdbc:postgresql://db:5432/bibliotheque`
+> grâce à `SPRING_DATASOURCE_URL` défini dans `docker-compose.yml`.
+
+### 4.1 — En local (fallback, sans Docker)
+
+La base doit exister et les identifiants doivent correspondre à
+[`application.properties`](bibliotheque-backend/src/main/resources/application.properties) —
+désormais **PostgreSQL** (`jdbc:postgresql://localhost:5432/bibliotheque`),
+utilisateur `bibliotheque`, mot de passe `bibliotheque`.
+
+```bash
+docker compose up -d db          # ou un PostgreSQL local
+```
+
+### 4.2 — Le backend
 
 ```bash
 cd bibliotheque-backend
@@ -176,13 +211,8 @@ cd bibliotheque-backend
 ```
 
 Au démarrage, `spring.jpa.hibernate.ddl-auto=update` demande à Hibernate de
-créer les tables manquantes. Vérifiez-le tout de suite :
-
-```sql
-USE bibliotheque;
-SHOW TABLES;
-DESCRIBE books;
-```
+créer les tables manquantes, puis le `DataSeeder` insère les données de
+démonstration si la base est vide.
 
 > Si Maven s'arrête sur `NoSuchFieldError ... JCTree$JCImport`, vous compilez
 > avec un JDK trop récent pour ce projet.
@@ -203,50 +233,30 @@ port 8080 : les deux doivent tourner en même temps.
 
 ---
 
-## 5. Créer le premier compte
+## 5. Comptes de départ (seed)
 
-Il n'y a aucun utilisateur en base, et `POST /admin/users` exige déjà un token.
-Le premier administrateur s'insère donc directement en SQL, **après** le premier
-démarrage du backend — sinon les tables n'existent pas encore.
+> ✅ **Plus rien à faire à la main** : le `DataSeeder` insère au premier
+> démarrage tous les comptes et livres de la démonstration. Aucune insertion SQL
+> manuelle n'est nécessaire (contrairement à l'ancienne procédure ci-dessous).
 
-Le mot de passe doit être un hachage **BCrypt** : `WebSecurityConfiguration`
-déclare un `BCryptPasswordEncoder`, il n'acceptera jamais un mot de passe en
-clair. Le hachage ci-dessous correspond à `admin123`.
+### Comptes préchargés
 
-```sql
-USE bibliotheque;
+| Utilisateur | Mot de passe | Rôles |
+|---|---|---|
+| `A1` | `a1` | Admin + User |
+| `A2` | `a2` | User |
+| `A3` | `a3` | User |
+| `A4` | `a4` | User |
+| `A5` | `a5` | User |
 
--- 1. Regardez d'abord ce qu'Hibernate a réellement créé.
---    Les noms ci-dessous suivent la convention Spring Boot
---    (camelCase -> snake_case), mais vérifiez-les, ne les supposez pas.
-SHOW TABLES;
-DESCRIBE users;
-DESCRIBE role;
+Livres : `B1`..`B6` (2 exemplaires chacun). Emprunts préchargés : **L2-L5 (B2-B5) empruntés par A3+A4** (0 copies restantes).
 
--- 2. Puis insérez, en adaptant aux colonnes que DESCRIBE vous a montrées.
-INSERT INTO role (role_name) VALUES ('Admin'), ('User');
-
-INSERT INTO users (user_id, username, name, password)
-VALUES (1, 'admin', 'Administrateur',
-        '$2b$10$RN5ij7XXjDpRBALhITW.2uzYGontX4U9c9ZRH5i3e.5l6RvkjZ696');
-
-INSERT INTO user_role (user_id, role_id)
-VALUES (1, (SELECT role_id FROM role WHERE role_name = 'Admin'));
-
--- 3. Si une table hibernate_sequence existe, avancez son compteur au-delà
---    des identifiants que vous venez de poser à la main, sinon la prochaine
---    création depuis l'application entrera en collision.
-UPDATE hibernate_sequence SET next_val = 100 WHERE next_val < 100;
-```
-
-Connexion : **admin / admin123**.
-
-Vérification en ligne de commande, sans passer par le navigateur :
+### Tester la connexion (sans navigateur)
 
 ```bash
 curl -X POST http://localhost:8080/authenticate \
      -H "Content-Type: application/json" \
-     -d '{"username":"admin","password":"admin123"}'
+     -d '{"username":"A1","password":"a1"}'
 ```
 
 Vous devez recevoir un JSON contenant `jwtToken`. Gardez-le : il sert pour tous
@@ -255,6 +265,9 @@ les autres appels.
 ```bash
 curl http://localhost:8080/admin/users -H "Authorization: Bearer <le_token>"
 ```
+
+> NB : le libellé de la section a changé (c'était « Créer le premier compte »).
+> Ancienne procédure SQL conservée ci-dessous pour référence historique.
 
 ---
 
@@ -274,7 +287,7 @@ tableau passivement.
 | 6 | Backend | [`CorsConfiguration.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/CorsConfiguration.java) | Le port 4200 n'est pas le port 8080 : sans cette autorisation CORS, le navigateur refuserait la réponse. |
 | 7 | Backend | [`JwtRequestFilter.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/JwtRequestFilter.java) | Extrait le token du header, en tire le `username`, recharge l'utilisateur et le pose dans le `SecurityContext`. Filtre exécuté **avant** tout contrôleur. |
 | 8 | Backend | [`WebSecurityConfiguration.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/WebSecurityConfiguration.java) | Décide si la requête a le droit de continuer. Sans authentification valide → 401 émis par `JwtAuthenticationEntryPoint`. |
-| 9 | Backend | [`BooksController.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/controller/BooksController.java) | `@PostMapping("/books")` reçoit le JSON, `@RequestBody` le transforme en objet `Books`. `@PreAuthorize("hasRole('Admin')")` refuse si le rôle ne colle pas → 403. |
+| 9 | Backend | [`ReservationController.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/controller/ReservationController.java) | `@PostMapping("/api/reservations")` reçoit le JSON. `ReservationService` applique les RG-01→RG-06. `GlobalExceptionHandler` renvoie les messages d'erreur. |
 | 10 | Backend | [`BooksRepository.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/dao/BooksRepository.java) | `save(book)`. L'interface est vide : Spring Data en génère l'implémentation au démarrage. |
 | 11 | Backend | [`Books.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/entity/Books.java) | `@Entity` / `@Table(name = "Books")` : c'est cette classe qui dit à Hibernate quelle table et quelles colonnes viser. |
 | 12 | Base | MySQL | Hibernate émet l'`INSERT`. `spring.jpa.show-sql=true` l'affiche dans la console : lisez-le, c'est la preuve que le trajet est complet. |
@@ -419,3 +432,6 @@ Quelques réflexes :
 | Emprunter | ![Emprunter](./screenshots/borrow_book.png) |
 | Rendre | ![Rendre](./screenshots/return_book.png) |
 | Accès refusé | ![Forbidden](./screenshots/forbidden.png) |
+
+
+>FREEBUFF_SESSION = freebuff --continue 2026-08-21T15-42-51.114Z

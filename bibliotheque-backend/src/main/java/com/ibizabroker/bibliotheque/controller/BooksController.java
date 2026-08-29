@@ -1,8 +1,7 @@
 package com.ibizabroker.bibliotheque.controller;
 
-import com.ibizabroker.bibliotheque.dao.BooksRepository;
 import com.ibizabroker.bibliotheque.entity.Books;
-import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
+import com.ibizabroker.bibliotheque.service.BooksService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,46 +17,35 @@ import java.util.Map;
 public class BooksController {
 
     @Autowired
-    private BooksRepository booksRepository;
+    private BooksService booksService;
 
     @GetMapping("/books")
-    public List<Books> getAllBooks(){
-        return booksRepository.findAll();
+    public List<Books> getAllBooks() {
+        return booksService.getAllBooks();
     }
 
     @PreAuthorize("hasRole('Admin')")
     @GetMapping("/books/{id}")
     public ResponseEntity<Books> getBookById(@PathVariable Integer id) {
-        Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
-        return ResponseEntity.ok(book);
+        return ResponseEntity.ok(booksService.getBookById(id));
     }
 
     @PreAuthorize("hasRole('Admin')")
     @PostMapping("/books")
     public Books createBook(@RequestBody Books book) {
-        return booksRepository.save(book);
+        return booksService.createBook(book);
     }
 
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/books/{id}")
     public ResponseEntity<Books> updateBook(@PathVariable Integer id, @RequestBody Books bookDetails) {
-        Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
-
-        book.setBookName(bookDetails.getBookName());
-        book.setBookAuthor(bookDetails.getBookAuthor());
-        book.setBookGenre(bookDetails.getBookGenre());
-        book.setNoOfCopies(bookDetails.getNoOfCopies());
-
-        Books updatedBook = booksRepository.save(book);
-        return ResponseEntity.ok(updatedBook);
+        return ResponseEntity.ok(booksService.updateBook(id, bookDetails));
     }
 
     @PreAuthorize("hasRole('Admin')")
     @DeleteMapping("/books/{id}")
     public ResponseEntity<Map<String, Boolean>> deleteBook(@PathVariable Integer id) {
-        Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
-
-        booksRepository.delete(book);
+        booksService.deleteBook(id);
         Map<String, Boolean> response = new HashMap<>();
         response.put("deleted", Boolean.TRUE);
         return ResponseEntity.ok(response);
